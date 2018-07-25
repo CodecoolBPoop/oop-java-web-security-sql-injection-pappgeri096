@@ -10,14 +10,23 @@ import java.util.List;
 public class TodoDaoImplWithJdbc implements TodoDao {
 
     private static final String DATABASE = "jdbc:postgresql://localhost:5432/todolist";
-    private static final String DB_USER = "postgres";
-    private static final String DB_PASSWORD = "postgres";
+    private static final String DB_USER = System.getenv("USER");
+    private static final String DB_PASSWORD = System.getenv("PASSWORD");
 
     @Override
     public void add(Todo todo) {
         String query = "INSERT INTO todos (title, id, status) " +
                 "VALUES ('" + todo.title + "', '" + todo.id + "', '" + todo.status + "');";
-        executeQuery(query);
+        try {
+            PreparedStatement preparedStatement = getConnection().prepareStatement("INSERT INTO todos (title, id, status) VALUES (?,?,?);");
+            preparedStatement.setString(1,todo.title);
+            preparedStatement.setString(2,todo.id);
+            preparedStatement.setString(3,todo.status.toString());
+            preparedStatement.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        // executeQuery(query);
     }
 
     @Override
@@ -25,10 +34,11 @@ public class TodoDaoImplWithJdbc implements TodoDao {
 
         String query = "SELECT * FROM todos WHERE id ='" + id + "';";
 
-        try (Connection connection = getConnection();
-             Statement statement =connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query);
-        ){
+        try {
+            Connection connection = getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM todos WHERE id = ?");
+            preparedStatement.setString(1,id);
+            ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()){
                 Todo result = new Todo(resultSet.getString("title"),
                         resultSet.getString("id"),
@@ -48,7 +58,15 @@ public class TodoDaoImplWithJdbc implements TodoDao {
     @Override
     public void update(String id, String title) {
         String query = "UPDATE todos SET title = '" + title + "' WHERE id = '" + id + "';";
-        executeQuery(query);
+        try {
+            PreparedStatement preparedStatement = getConnection().prepareStatement("UPDATE todos SET title = ? WHERE id = ?;");
+            preparedStatement.setString(1,title);
+            preparedStatement.setString(2,id);
+            preparedStatement.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        //executeQuery(query);
     }
 
     @Override
@@ -59,14 +77,15 @@ public class TodoDaoImplWithJdbc implements TodoDao {
 
     @Override
     public List<Todo> ofStatus(Status status) {
-        String query = "SELECT * FROM todos WHERE status ='" + status + "';";;
+        String query = "SELECT * FROM todos WHERE status = ?;";
 
         List<Todo> resultList = new ArrayList<>();
 
-        try (Connection connection = getConnection();
-             Statement statement =connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query);
-        ){
+        try {
+            Connection connection = getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setString(1,status.toString());
+            ResultSet resultSet = preparedStatement.executeQuery(query);
             while (resultSet.next()){
                 Todo actTodo = new Todo(resultSet.getString("title"),
                         resultSet.getString("id"),
@@ -85,7 +104,14 @@ public class TodoDaoImplWithJdbc implements TodoDao {
     @Override
     public void remove(String id) {
         String query = "DELETE FROM todos WHERE id = '" + id +"';";
-        executeQuery(query);
+        try {
+            PreparedStatement preparedStatement = getConnection().prepareStatement("DELETE FROM todos WHERE id = ?;");
+            preparedStatement.setString(1,id);
+            preparedStatement.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        //executeQuery(query);
     }
 
     @Override
@@ -103,8 +129,15 @@ public class TodoDaoImplWithJdbc implements TodoDao {
         }
 
         Status newStatus = (todo.status == Status.ACTIVE) ? Status.COMPLETE : Status.ACTIVE;
-        String query = "UPDATE todos SET status = '" + newStatus + "' WHERE id = '" + id + "';";
-        executeQuery(query);
+        String query = "UPDATE todos SET status = ? WHERE id = ?;";
+        try {
+            PreparedStatement preparedStatement = getConnection().prepareStatement(query);
+            preparedStatement.setString(1,newStatus.toString());
+            preparedStatement.setString(2,id);
+            preparedStatement.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
     }
 
